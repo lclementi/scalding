@@ -126,9 +126,9 @@ sealed trait Execution[+T] extends java.io.Serializable {
 
   /**
    * You can use this to set common values of Config that will be shared
-   * by all the flows created by this Execution. Must be set before execution runs.
+   * by all the flows created by this Execution.
    */
-  def setExtraConfig(conf: Config): Unit = ()
+  def setExtraConfig(conf: Config): Execution[T] = this
 
   /**
    * This causes the Execution to occur. The result is not cached, so each call
@@ -481,29 +481,19 @@ object Execution {
    */
 
   private trait ToWrite {
-    def setExtraConfig(conf: Config): Config = Config.empty
+    def setExtraConfig(conf: Config): ToWrite = this
 
     def write(config: Config, flowDef: FlowDef, mode: Mode): Unit
   }
 
-  private case class SimpleWrite[T](pipe: TypedPipe[T], sink: TypedSink[T]) extends ToWrite {
+  private case class SimpleWrite[T](pipe: TypedPipe[T], sink: TypedSink[T], conf: Config = Config.empty) extends ToWrite {
 
-    var extraConfig = Config.empty
-
-    override def setExtraConfig(conf: Config): Config = {
-      extraConfig = extraConfig ++ conf
-      extraConfig
-    }
+    override def setExtraConfig(extraConf: Config): ToWrite =
+      SimpleWrite(pipe, sink, conf ++ extraConf)
 
     def write(config: Config, flowDef: FlowDef, mode: Mode): Unit = {
       // This has the side effect of mutating flowDef
-      var tempPipe: TypedPipe[T] = pipe
-      var key: String = "";
-      var value: String = "";
-      for ((key, value) <- extraConfig.toMap) {
-        tempPipe = tempPipe.withExtraConfig(key, value)
-      }
-      tempPipe.write(sink)(flowDef, mode)
+      pipe.withExtraConfig(conf).write(sink)(flowDef, mode)
       ()
     }
   }
@@ -523,9 +513,8 @@ object Execution {
     /**
      * override this so that we can push down the conf value to the current TypedPipes
      */
-    override def setExtraConfig(conf: Config): Unit = {
-      (head :: tail).foreach(_.setExtraConfig(conf))
-    }
+    override def setExtraConfig(conf: Config): Execution[T] =
+      WriteExecution(head.setExtraConfig(conf), tail.map(_.setExtraConfig(conf)), fn)
 
     /**
      * Apply a pure function to the result. This may not

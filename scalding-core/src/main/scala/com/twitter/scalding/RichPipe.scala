@@ -81,16 +81,13 @@ object RichPipe extends java.io.Serializable {
     }
   }
 
-  def setPipeExtraConfig(p: Pipe, key: String, value: String): Pipe = {
-    p.getStepConfigDef().setProperty(key, value)
+  def setPipeExtraConfig(p: Pipe, conf: Config): Pipe = {
+    conf.toMap.foreach(item => p.getStepConfigDef().setProperty(item._1, item._2))
     p
   }
 
   def setPipeDescriptions(p: Pipe, descriptions: Seq[String]): Pipe = {
-    p.getStepConfigDef().setProperty(
-      Config.PipeDescriptions,
-      encodePipeDescriptions(getPipeDescriptions(p) ++ descriptions))
-    p
+    RichPipe.setPipeExtraConfig(p, Config(Map(Config.PipeDescriptions, (getPipeDescriptions(p) ++ descriptions))))
   }
 
   def setPipeDescriptionFrom(p: Pipe, ste: Option[StackTraceElement]): Pipe = {

@@ -88,13 +88,15 @@ class ConfTestExecution(args: Args) extends ExecutionJob[Unit](args) {
   }
 
   def execution = {
-    val exec1 = TypedPipe.from(TypedTsv[(String, Int)](args("input1"))).writeExecution(TypedTsv[(String, Int)](args("output1")))
-    val exec2 = TypedPipe.from(TypedTsv[(String, Int)](args("input2"))).writeExecution(TypedTsv[(String, Int)](args("output2")))
-    exec1.setExtraConfig(Config(Map("testconf1" -> "1")))
-    exec2.setExtraConfig(Config(Map("testconf2" -> "2")))
+    val exec1 = TypedPipe.from(TypedTsv[(String, Int)](args("input1")))
+      .writeExecution(TypedTsv[(String, Int)](args("output1")))
+      .setExtraConfig(Config(Map("testconf1" -> "1")))
+
+    val exec2 = TypedPipe.from(TypedTsv[(String, Int)](args("input2")))
+      .writeExecution(TypedTsv[(String, Int)](args("output2")))
+      .setExtraConfig(Config(Map("testconf2" -> "2")))
     val zippedExec = exec1.zip(exec2)
-    zippedExec.setExtraConfig(Config(Map("testconf3" -> "3")))
-    zippedExec.unit
+    zippedExec.setExtraConfig(Config(Map("testconf3" -> "3"))).unit
   }
 
   private[this] class TestExecutionFlowListener extends FlowStepListener {
